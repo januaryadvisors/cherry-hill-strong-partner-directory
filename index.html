@@ -915,25 +915,43 @@ function splitField(value) {
   return value ? value.split('|').map(s => s.trim()).filter(Boolean) : [];
 }
 
+function normalizeKey(k) {
+  return String(k).trim().toLowerCase().replace(/[\s_]+/g, '');
+}
+
+function makeRowLookup(row) {
+  const map = {};
+  Object.keys(row).forEach(k => {
+    map[normalizeKey(k)] = row[k];
+  });
+  return map;
+}
+
+function getField(lookup, key) {
+  const val = lookup[normalizeKey(key)];
+  return val !== undefined && val !== null ? String(val).trim() : '';
+}
+
 function rowToPartner(row) {
+  const lookup = makeRowLookup(row);
   return {
-    name: row.name || '',
-    orgType: row.orgType || '',
-    accentType: row.accentType || '',
-    partnershipType: row.partnershipType || '',
-    pillars: splitField(row.pillars),
-    serviceKeywords: splitField(row.serviceKeywords),
-    populationKeywords: splitField(row.populationKeywords),
-    website: row.website || '',
-    description: row.description || '',
-    services: splitField(row.services),
-    populations: splitField(row.populations),
-    programs: splitField(row.programs),
-    orgEmail: row.orgEmail || '',
-    orgPhone: row.orgPhone || '',
-    contactName: row.contactName || '',
-    contactEmail: row.contactEmail || '',
-    contactPhone: row.contactPhone || ''
+    name: getField(lookup, 'name'),
+    orgType: getField(lookup, 'orgType'),
+    accentType: getField(lookup, 'accentType'),
+    partnershipType: getField(lookup, 'partnershipType'),
+    pillars: splitField(getField(lookup, 'pillars')),
+    serviceKeywords: splitField(getField(lookup, 'serviceKeywords')),
+    populationKeywords: splitField(getField(lookup, 'populationKeywords')),
+    website: getField(lookup, 'website'),
+    description: getField(lookup, 'description'),
+    services: splitField(getField(lookup, 'services')),
+    populations: splitField(getField(lookup, 'populations')),
+    programs: splitField(getField(lookup, 'programs')),
+    orgEmail: getField(lookup, 'orgEmail'),
+    orgPhone: getField(lookup, 'orgPhone'),
+    contactName: getField(lookup, 'contactName'),
+    contactEmail: getField(lookup, 'contactEmail'),
+    contactPhone: getField(lookup, 'contactPhone')
   };
 }
 
@@ -948,8 +966,10 @@ async function loadPartnersFromSheet() {
     const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
     if (parsed.errors && parsed.errors.length) {
-      console.warn('CSV parse warnings:', parsed.errors);
+      console.warn('CSV parse warnings:', parsed.errors.slice(0, 5));
     }
+    console.log('Detected columns in sheet:', parsed.meta && parsed.meta.fields);
+    console.log('First raw row from sheet:', parsed.data[0]);
 
     const partners = parsed.data
       .map(rowToPartner)

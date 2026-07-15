@@ -1097,13 +1097,13 @@
       // serviceKeywords, populationKeywords, website, description, services, populations,
       // programs, orgEmail, orgPhone, contactName, contactEmail, contactPhone
       // Multi-value fields (pillars, serviceKeywords, populationKeywords, services, populations,
-      // programs) should be pipe-delimited within a single cell, e.g. "education|wellness"
+      // programs) are semicolon-delimited within a single cell, e.g. "education; wellness"
       const SHEET_CSV_URL =
         'https://docs.google.com/spreadsheets/d/1wUw7IPJSA6Rhe5Hv73F5N4LKSrC6e49DSSYcJMgDLc0/gviz/tq?tqx=out:csv&gid=1724789906';
       let PARTNERS = [];
 
       function splitField(value) {
-        return value ? value.split('|').map(s => s.trim()).filter(Boolean) : [];
+        return value ? value.split(';').map(s => s.trim()).filter(Boolean) : [];
       }
 
       function normalizeKey(k) {

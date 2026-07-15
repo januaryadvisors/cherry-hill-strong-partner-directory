@@ -1125,25 +1125,28 @@
       }
 
       function rowToPartner(row) {
+        // Keys here are matched against the sheet's actual column headers via
+        // normalizeKey(), which strips spacing/case/bullet markers — so these
+        // must read like the real header text, not short camelCase names.
         const lookup = makeRowLookup(row);
         return {
-          name: getField(lookup, 'name'),
-          orgType: getField(lookup, 'orgType'),
-          accentType: getField(lookup, 'accentType'),
-          partnershipType: getField(lookup, 'partnershipType'),
-          pillars: splitField(getField(lookup, 'pillars')),
-          serviceKeywords: splitField(getField(lookup, 'serviceKeywords')),
-          populationKeywords: splitField(getField(lookup, 'populationKeywords')),
-          website: getField(lookup, 'website'),
-          description: getField(lookup, 'description'),
-          services: splitField(getField(lookup, 'services')),
-          populations: splitField(getField(lookup, 'populations')),
-          programs: splitField(getField(lookup, 'programs')),
-          orgEmail: getField(lookup, 'orgEmail'),
-          orgPhone: getField(lookup, 'orgPhone'),
-          contactName: getField(lookup, 'contactName'),
-          contactEmail: getField(lookup, 'contactEmail'),
-          contactPhone: getField(lookup, 'contactPhone'),
+          name: getField(lookup, 'Name'),
+          orgType: getField(lookup, 'Organization Type'),
+          accentType: getField(lookup, 'Accent Type'),
+          partnershipType: getField(lookup, 'Partnership Type'),
+          pillars: splitField(getField(lookup, 'Pillars')),
+          serviceKeywords: splitField(getField(lookup, 'Service Filter Keywords')),
+          populationKeywords: splitField(getField(lookup, 'Population Filter Keywords')),
+          website: getField(lookup, 'Website URL'),
+          description: getField(lookup, 'About This Organization'),
+          services: splitField(getField(lookup, 'Services Offered')),
+          populations: splitField(getField(lookup, 'Populations Served')),
+          programs: splitField(getField(lookup, 'Programs Supported')),
+          orgEmail: getField(lookup, 'Org Email'),
+          orgPhone: getField(lookup, 'Org Phone'),
+          contactName: getField(lookup, 'Primary Contact Name'),
+          contactEmail: getField(lookup, 'Primary Contact Email'),
+          contactPhone: getField(lookup, 'Primary Contact Phone'),
         };
       }
 

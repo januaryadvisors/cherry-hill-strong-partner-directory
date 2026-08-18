@@ -1,4 +1,4 @@
-// Send Log webhook for the Cherry Hill Strong Partner Directory.
+// Reminder Log webhook for the Cherry Hill Strong Partner Directory.
 //
 // Deploy this bound to the SAME spreadsheet the directory reads from
 // (the one behind SHEET_CSV_URL in index.html).
@@ -14,9 +14,9 @@
 //   6. Paste that URL into SEND_LOG_WEBHOOK_URL in index.html.
 //
 // Each send from the directory appends one row per organization to a
-// "Send Log" tab (created automatically on first send if it doesn't exist).
+// "Reminder Log" tab (created automatically on first send if it doesn't exist).
 
-const LOG_SHEET_NAME = 'Send Log';
+const LOG_SHEET_NAME = 'Reminder Log';
 
 function doPost(e) {
   try {

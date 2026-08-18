@@ -1025,17 +1025,31 @@
               <label>Filter by Population</label>
               <select id="filter-population">
                 <option value="">All Populations</option>
-                <option value="children">Children (ages 0–12)</option>
-                <option value="youth">Youth & Teens (ages 13–18)</option>
-                <option value="adults">Adults</option>
-                <option value="seniors">Older Adults / Seniors</option>
-                <option value="families">Families</option>
-                <option value="parents">Parents & Caregivers</option>
-                <option value="educators">Educators & Teachers</option>
-                <option value="small business">Small Business Owners</option>
-                <option value="public housing">Public Housing Residents</option>
-                <option value="homebuyers">Prospective Homebuyers</option>
-                <option value="pregnant">Pregnant Women & New Mothers</option>
+                <option value="Adults">Adults</option>
+                <option value="Cherry Hill residents">Cherry Hill residents</option>
+                <option value="Community-serving organizations and partners">
+                  Community-serving organizations and partners
+                </option>
+                <option value="Early childhood educators">Early childhood educators</option>
+                <option value="Entrepreneurs">Entrepreneurs</option>
+                <option value="Families">Families</option>
+                <option value="High school students (Age 14-18)">
+                  High school students (Age 14-18)
+                </option>
+                <option value="Homeowners">Homeowners</option>
+                <option value="Infants and toddlers (Age 0-4)">
+                  Infants and toddlers (Age 0-4)
+                </option>
+                <option value="K-12 educators">K-12 educators</option>
+                <option value="K-8 students (Age 5-14)">K-8 students (Age 5-14)</option>
+                <option value="New mothers">New mothers</option>
+                <option value="Parents/caregivers">Parents/caregivers</option>
+                <option value="Pregnant women">Pregnant women</option>
+                <option value="Prospective homebuyers">Prospective homebuyers</option>
+                <option value="Public housing residents">Public housing residents</option>
+                <option value="School staff/administration">School staff/administration</option>
+                <option value="Seniors">Seniors</option>
+                <option value="Small business owners">Small business owners</option>
               </select>
             </div>
             <div class="filter-group">
@@ -1158,11 +1172,13 @@
 
       // Partner data is loaded from a published Google Sheet (CSV) rather than hardcoded here.
       // Sheet columns required: name, orgType, pillars,
-      // serviceKeywords, populationKeywords, website, description, services, populations,
+      // serviceKeywords, website, description, services, populations,
       // programs, orgEmail, orgPhone, contactName, contactEmail, contactPhone
       // (accentType is derived from orgType — see ORG_TYPE_TO_ACCENT — not read from the sheet)
-      // Multi-value fields (pillars, serviceKeywords, populationKeywords, services, populations,
+      // Multi-value fields (pillars, serviceKeywords, services, populations,
       // programs) are semicolon-delimited within a single cell, e.g. "education; wellness"
+      // (Filter by Population uses the exact "Populations Served" text directly,
+      // same pattern as Filter by Program — no separate keyword column needed.)
       const SHEET_CSV_URL =
         'https://docs.google.com/spreadsheets/d/1wUw7IPJSA6Rhe5Hv73F5N4LKSrC6e49DSSYcJMgDLc0/gviz/tq?tqx=out:csv&gid=1724789906';
       let PARTNERS = [];
@@ -1220,7 +1236,6 @@
           accentType: deriveAccentType(orgType),
           pillars: splitField(getField(lookup, 'Pillars')).map(normalizePillar),
           serviceKeywords: splitField(getField(lookup, 'Service Filter Keywords')),
-          populationKeywords: splitField(getField(lookup, 'Population Filter Keywords')),
           website: getField(lookup, 'Website URL'),
           description: getField(lookup, 'About This Organization'),
           services: splitField(getField(lookup, 'Services Offered')),
@@ -1531,7 +1546,7 @@
             p.description.toLowerCase().includes(nameQ);
           const matchPillar = !pillar || p.pillars.includes(pillar);
           const matchService = !service || p.serviceKeywords.includes(service);
-          const matchPop = !population || p.populationKeywords.includes(population);
+          const matchPop = !population || p.populations.some(pop => pop.includes(population));
           const matchProgram = !program || p.programs.some(pr => pr.includes(program));
           return matchName && matchPillar && matchService && matchPop && matchProgram;
         });
@@ -1559,20 +1574,6 @@
         technology: 'Technology & IT',
       };
 
-      const POP_LABELS = {
-        children: 'Children (0–12)',
-        youth: 'Youth & Teens (13–18)',
-        adults: 'Adults',
-        seniors: 'Older Adults / Seniors',
-        families: 'Families',
-        parents: 'Parents & Caregivers',
-        educators: 'Educators & Teachers',
-        'small business': 'Small Business Owners',
-        'public housing': 'Public Housing Residents',
-        homebuyers: 'Prospective Homebuyers',
-        pregnant: 'Pregnant Women & New Mothers',
-      };
-
       function updatePills(name, pillar, service, pop, program) {
         const container = document.getElementById('active-pills');
         let html = '';
@@ -1583,7 +1584,7 @@
         if (service)
           html += `<span class="active-pill" onclick="clearField('filter-service')">${SERVICE_LABELS[service]} ×</span>`;
         if (pop)
-          html += `<span class="active-pill" onclick="clearField('filter-population')">${POP_LABELS[pop]} ×</span>`;
+          html += `<span class="active-pill" onclick="clearField('filter-population')">${pop} ×</span>`;
         if (program)
           html += `<span class="active-pill" onclick="clearField('filter-program')">${program} ×</span>`;
         container.innerHTML = html;

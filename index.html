@@ -1553,8 +1553,57 @@
       document.getElementById('filter-population').addEventListener('change', filterPartners);
       document.getElementById('filter-program').addEventListener('change', filterPartners);
 
+      // ── POPULATION FILTER OPTIONS, SHEET-DRIVEN ────────────────────────────
+      // The "Filter by Population" options come from the "Population Keywords"
+      // column of the "Dropdown — Quick Reference" tab, not a hardcoded list —
+      // so adding/removing a value there updates the site with no code change.
+      // The <option> list already in the HTML stays as a fallback if this
+      // fetch fails (stale sheet, tab renamed, network issue, etc.).
+      const DROPDOWN_OPTIONS_CSV_URL =
+        'https://docs.google.com/spreadsheets/d/1wUw7IPJSA6Rhe5Hv73F5N4LKSrC6e49DSSYcJMgDLc0/gviz/tq?tqx=out:csv&gid=1824800790';
+
+      async function loadPopulationFilterOptions() {
+        try {
+          const res = await fetch(DROPDOWN_OPTIONS_CSV_URL);
+          if (!res.ok) throw new Error('Network response was not ok: ' + res.status);
+          const csvText = await res.text();
+          const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+          const rows = parsed.data;
+
+          const headerRowIndex = rows.findIndex(row =>
+            row.some(cell => normalizeKey(cell) === 'populationkeywords')
+          );
+          if (headerRowIndex === -1) {
+            throw new Error('Could not find a "Population Keywords" column in the Dropdown Options tab');
+          }
+          const colIdx = rows[headerRowIndex].findIndex(
+            cell => normalizeKey(cell) === 'populationkeywords'
+          );
+
+          const values = rows
+            .slice(headerRowIndex + 1)
+            .map(row => (row[colIdx] || '').trim())
+            .filter(Boolean);
+
+          if (!values.length) throw new Error('No Population Keywords values found');
+
+          const select = document.getElementById('filter-population');
+          const previousValue = select.value;
+          select.innerHTML =
+            '<option value="">All Populations</option>' +
+            values.map(v => `<option value="${v}">${v}</option>`).join('');
+          if (values.includes(previousValue)) select.value = previousValue;
+        } catch (err) {
+          console.warn(
+            'Failed to load Population Keyword options from the Dropdown Options tab — keeping the built-in list.',
+            err
+          );
+        }
+      }
+
       // Init
       loadPartnersFromSheet();
+      loadPopulationFilterOptions();
     </script>
   </body>
 </html>

@@ -1092,10 +1092,24 @@
         economic: 'Economic Vitality',
       };
 
+      // Sheet Pillars cells hold the full label text (e.g. "Community Wellness")
+      // rather than short codes — map back to the short key used internally for
+      // CSS classing and the pillar filter dropdown. Old short-code entries still
+      // resolve correctly since the fallback below just normalizes the raw value.
+      const PILLAR_LABEL_TO_KEY = Object.fromEntries(
+        Object.entries(PILLAR_LABELS).map(([key, label]) => [normalizeKey(label), key])
+      );
+
+      function normalizePillar(raw) {
+        const key = normalizeKey(raw);
+        return PILLAR_LABEL_TO_KEY[key] || key;
+      }
+
       // Partner data is loaded from a published Google Sheet (CSV) rather than hardcoded here.
-      // Sheet columns required: name, orgType, accentType, partnershipType, pillars,
+      // Sheet columns required: name, orgType, pillars,
       // serviceKeywords, populationKeywords, website, description, services, populations,
       // programs, orgEmail, orgPhone, contactName, contactEmail, contactPhone
+      // (accentType is derived from orgType — see ORG_TYPE_TO_ACCENT — not read from the sheet)
       // Multi-value fields (pillars, serviceKeywords, populationKeywords, services, populations,
       // programs) are semicolon-delimited within a single cell, e.g. "education; wellness"
       const SHEET_CSV_URL =
@@ -1103,7 +1117,9 @@
       let PARTNERS = [];
 
       function splitField(value) {
-        return value ? value.split(';').map(s => s.trim()).filter(Boolean) : [];
+        // Manually-typed cells use ';'; Sheets' native multi-select dropdown
+        // (chips) exports selections comma-separated instead — accept either.
+        return value ? value.split(/[;,]/).map(s => s.trim()).filter(Boolean) : [];
       }
 
       function normalizeKey(k) {
@@ -1124,17 +1140,34 @@
         return val !== undefined && val !== null ? String(val).trim() : '';
       }
 
+      // Accent Type is derived from Organization Type rather than read from its
+      // own sheet column — this is the full set of Organization Type values in
+      // use as of 2026-08-18. Unrecognized values fall back to 'nonprofit'.
+      const ORG_TYPE_TO_ACCENT = {
+        [normalizeKey('Public / Government')]: 'government',
+        [normalizeKey('School')]: 'school',
+        [normalizeKey('University')]: 'university',
+        [normalizeKey('Nonprofit')]: 'nonprofit',
+        [normalizeKey('Faith-Based Organization')]: 'faith',
+        [normalizeKey('Community-Based Organization')]: 'community',
+        [normalizeKey('Private')]: 'private',
+      };
+
+      function deriveAccentType(orgType) {
+        return ORG_TYPE_TO_ACCENT[normalizeKey(orgType)] || 'nonprofit';
+      }
+
       function rowToPartner(row) {
         // Keys here are matched against the sheet's actual column headers via
         // normalizeKey(), which strips spacing/case/bullet markers — so these
         // must read like the real header text, not short camelCase names.
         const lookup = makeRowLookup(row);
+        const orgType = getField(lookup, 'Organization Type');
         return {
           name: getField(lookup, 'Name'),
-          orgType: getField(lookup, 'Organization Type'),
-          accentType: getField(lookup, 'Accent Type'),
-          partnershipType: getField(lookup, 'Partnership Type'),
-          pillars: splitField(getField(lookup, 'Pillars')),
+          orgType,
+          accentType: deriveAccentType(orgType),
+          pillars: splitField(getField(lookup, 'Pillars')).map(normalizePillar),
           serviceKeywords: splitField(getField(lookup, 'Service Filter Keywords')),
           populationKeywords: splitField(getField(lookup, 'Population Filter Keywords')),
           website: getField(lookup, 'Website URL'),
@@ -1257,7 +1290,9 @@
             : `<span class="website-link website-link-empty" onclick="event.stopPropagation()">↗ Visit Website</span>`;
 
           const primaryContactName = p.contactName || '[Contact Name]';
-          const primaryContactEmail = p.contactEmail || '[Email Address]';
+          const primaryContactEmail = p.contactEmail
+            ? `<a href="mailto:${p.contactEmail}" onclick="event.stopPropagation()">${p.contactEmail}</a>`
+            : '[Email Address]';
           const primaryContactPhone = p.contactPhone || '[Phone Number]';
 
           const orgContactHtml = (() => {

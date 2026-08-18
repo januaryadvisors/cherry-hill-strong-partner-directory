@@ -314,6 +314,37 @@
         gap: 0.35rem;
       }
 
+      .results-bar-right {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .email-all-btn {
+        height: 32px;
+        padding: 0 0.9rem;
+        background: var(--green);
+        border: 1.5px solid var(--green);
+        color: white;
+        border-radius: 5px;
+        font-family: 'Onest', sans-serif;
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        transition:
+          background 0.2s,
+          border-color 0.2s;
+      }
+
+      .email-all-btn:hover {
+        background: var(--green-dark);
+        border-color: var(--green-dark);
+      }
+
       .active-pill {
         display: inline-flex;
         align-items: center;
@@ -834,6 +865,23 @@
         cursor: default;
       }
 
+      .detail-footer-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .send-reminder-btn {
+        font-family: 'Onest', sans-serif;
+        cursor: pointer;
+      }
+
+      .send-reminder-btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
       /* ── NO RESULTS ── */
       .no-results {
         text-align: center;
@@ -1069,7 +1117,10 @@
     <div class="content-area">
       <div class="results-bar">
         <div class="results-count">Showing <span id="results-num">0</span> partners</div>
-        <div class="active-filter-pills" id="active-pills"></div>
+        <div class="results-bar-right">
+          <div class="active-filter-pills" id="active-pills"></div>
+          <button type="button" id="email-all-btn" class="email-all-btn">✉ Request Partner Updates</button>
+        </div>
       </div>
       <div class="partner-list" id="partner-list"></div>
       <div class="no-results" id="no-results">
@@ -1364,11 +1415,23 @@
               </div>
             </div>
           </div>
-          ${websiteBtn}
+          <div class="detail-footer-actions">
+            <button
+              type="button"
+              class="send-reminder-btn website-link"
+              ${p.contactEmail ? '' : 'disabled title="No contact email on file"'}
+            >✉ Send Reminder</button>
+            ${websiteBtn}
+          </div>
         </div>
         </div>
       </div>
     `;
+          const reminderBtn = item.querySelector('.send-reminder-btn');
+          reminderBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            sendIndividualReminder(p);
+          });
           container.appendChild(item);
         });
       }
@@ -1551,6 +1614,100 @@
       document.getElementById('filter-service').addEventListener('change', filterPartners);
       document.getElementById('filter-population').addEventListener('change', filterPartners);
       document.getElementById('filter-program').addEventListener('change', filterPartners);
+
+      // ── REMINDER EMAILS ─────────────────────────────────────────────────
+      // Sends open the visitor's own mail client via a mailto: link — the page
+      // has no way to confirm the message was actually sent, only that this
+      // button was clicked. "Sent" in the log below means "reminder triggered."
+      //
+      // Writeback to the sheet goes through a Google Apps Script Web App
+      // bound to the same spreadsheet (see apps-script/Code.gs in this repo
+      // for the script + deploy steps). Paste the deployed Web App URL below
+      // once it exists; until then, sends still work but nothing is logged.
+      const SEND_LOG_WEBHOOK_URL =
+        'https://script.google.com/macros/s/AKfycbxMeZOb9LPpyscBqSbsTW0uTGKGSRuRhEnRttkPZRJapBJj5nqbPabr7rIzGtDGtILA7Q/exec';
+
+      function buildMailtoUrl({ to, bccList, subject, body }) {
+        const params = [];
+        if (subject) params.push('subject=' + encodeURIComponent(subject));
+        if (body) params.push('body=' + encodeURIComponent(body));
+        if (bccList && bccList.length) {
+          params.push('bcc=' + bccList.map(e => encodeURIComponent(e)).join(','));
+        }
+        const toPart = to ? encodeURIComponent(to) : '';
+        return `mailto:${toPart}${params.length ? '?' + params.join('&') : ''}`;
+      }
+
+      function promptSenderName() {
+        const name = window.prompt('Your name (for the send log):', '');
+        if (name === null) return null; // cancelled
+        const trimmed = name.trim();
+        return trimmed || null;
+      }
+
+      function logSendEvent(sender, type, orgs) {
+        if (!SEND_LOG_WEBHOOK_URL || SEND_LOG_WEBHOOK_URL.indexOf('PASTE_YOUR') === 0) {
+          console.warn('Send Log webhook URL not configured yet — skipping sheet log for this send.');
+          return;
+        }
+        // mode: 'no-cors' + text/plain avoids Apps Script's CORS/preflight quirks;
+        // we can't read the response, so this is fire-and-forget.
+        fetch(SEND_LOG_WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ sender, type, orgs, timestamp: new Date().toISOString() }),
+        }).catch(err => {
+          console.warn('Failed to log send event to sheet:', err);
+        });
+      }
+
+      function sendIndividualReminder(partner) {
+        if (!partner.contactEmail) return;
+        const sender = promptSenderName();
+        if (!sender) return;
+
+        const mailtoUrl = buildMailtoUrl({
+          to: partner.contactEmail,
+          subject: 'test',
+          body: 'test',
+        });
+        window.open(mailtoUrl, '_blank');
+
+        logSendEvent(sender, 'individual', [
+          { name: partner.name, contactEmail: partner.contactEmail },
+        ]);
+      }
+
+      function emailAllPartners() {
+        const withEmail = PARTNERS.filter(p => p.contactEmail);
+        if (!withEmail.length) {
+          alert('No partner contact emails are on file yet.');
+          return;
+        }
+
+        const confirmed = confirm(
+          `This will open an email BCC'd to ${withEmail.length} partner contact${
+            withEmail.length === 1 ? '' : 's'
+          }. Continue?`
+        );
+        if (!confirmed) return;
+
+        const sender = promptSenderName();
+        if (!sender) return;
+
+        const bccList = withEmail.map(p => p.contactEmail);
+        const mailtoUrl = buildMailtoUrl({ bccList, subject: 'test', body: 'test' });
+        window.open(mailtoUrl, '_blank');
+
+        logSendEvent(
+          sender,
+          'bulk',
+          withEmail.map(p => ({ name: p.name, contactEmail: p.contactEmail }))
+        );
+      }
+
+      document.getElementById('email-all-btn').addEventListener('click', emailAllPartners);
 
       // Init
       loadPartnersFromSheet();

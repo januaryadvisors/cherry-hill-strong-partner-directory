@@ -1627,6 +1627,35 @@
       const SEND_LOG_WEBHOOK_URL =
         'https://script.google.com/macros/s/AKfycbxMeZOb9LPpyscBqSbsTW0uTGKGSRuRhEnRttkPZRJapBJj5nqbPabr7rIzGtDGtILA7Q/exec';
 
+      const DIRECTORY_URL = 'https://januaryadvisors.github.io/cherry-hill-strong-partner-directory/';
+
+      const BULK_REMINDER_SUBJECT = 'Please Help Us Keep the Cherry Hill Partner Directory Up-to-Date';
+      const BULK_REMINDER_BODY = `Hi there,
+
+We are reaching out because you are listed in the Cherry Hill Strong partner directory, which serves as a centralized resource for Cherry Hill residents, staff, and community partners to find local organizations and the services they offer. We want to make sure that the information we have for your team is accurate.
+
+You can view your current listing here: ${DIRECTORY_URL}
+
+If anything needs updating (contact info, services offered, populations served, etc.) just reply to this email with the changes and we'll take care of it on our end. If everything looks correct as-is, a quick reply confirming that helps too.
+
+If you'd rather not be listed in the directory, just let us know and we'll remove your organization.
+
+Thanks for being part of the Cherry Hill network!`;
+
+      const INDIVIDUAL_REMINDER_SUBJECT = 'Reminder: Please Confirm Your Cherry Hill Partner Directory Listing';
+
+      function individualReminderBody(orgName) {
+        return `Hi ${orgName} team,
+
+Following up on our recent request to review your organization's listing in the Cherry Hill Strong partner directory. You can view your current listing here: ${DIRECTORY_URL}
+
+If you could reply with any updates or confirm if everything still looks accurate, we would appreciate it!
+
+And if you'd rather not be listed in the directory, just let us know.
+
+Thanks!`;
+      }
+
       function buildMailtoUrl({ to, bccList, subject, body }) {
         const params = [];
         if (subject) params.push('subject=' + encodeURIComponent(subject));
@@ -1669,8 +1698,8 @@
 
         const mailtoUrl = buildMailtoUrl({
           to: partner.contactEmail,
-          subject: 'test',
-          body: 'test',
+          subject: INDIVIDUAL_REMINDER_SUBJECT,
+          body: individualReminderBody(partner.name),
         });
         window.open(mailtoUrl, '_blank');
 
@@ -1697,7 +1726,11 @@
         if (!sender) return;
 
         const bccList = withEmail.map(p => p.contactEmail);
-        const mailtoUrl = buildMailtoUrl({ bccList, subject: 'test', body: 'test' });
+        const mailtoUrl = buildMailtoUrl({
+          bccList,
+          subject: BULK_REMINDER_SUBJECT,
+          body: BULK_REMINDER_BODY,
+        });
         window.open(mailtoUrl, '_blank');
 
         logSendEvent(

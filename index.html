@@ -952,22 +952,24 @@
               <label>Filter by Service Type</label>
               <select id="filter-service">
                 <option value="">All Services</option>
-                <option value="tutoring">Tutoring & Academic Support</option>
-                <option value="workforce">Workforce Development</option>
-                <option value="housing">Housing Development & Support</option>
-                <option value="legal">Legal Services</option>
-                <option value="health">Health & Wellness Services</option>
-                <option value="mental health">Mental Health & Counseling</option>
-                <option value="food">Food Access</option>
-                <option value="early childhood">Early Childhood Education</option>
-                <option value="professional development">Educator Professional Development</option>
-                <option value="business">Business & Entrepreneurship Support</option>
-                <option value="financial">Financial Education & Assistance</option>
-                <option value="community organizing">Community Organizing & Outreach</option>
-                <option value="safety">Neighborhood Safety</option>
-                <option value="tax">Tax Preparation</option>
-                <option value="transportation">Transportation</option>
-                <option value="technology">Technology & IT</option>
+                <option value="Tutoring & Academic Support">Tutoring & Academic Support</option>
+                <option value="Workforce Development">Workforce Development</option>
+                <option value="Housing Development & Support">Housing Development & Support</option>
+                <option value="Legal Services">Legal Services</option>
+                <option value="Health & Wellness Services">Health & Wellness Services</option>
+                <option value="Mental Health & Counseling">Mental Health & Counseling</option>
+                <option value="Food Access">Food Access</option>
+                <option value="Early Childhood Education">Early Childhood Education</option>
+                <option value="Educator Professional Development">Educator Professional Development</option>
+                <option value="Business & Entrepreneurship Support">Business & Entrepreneurship Support</option>
+                <option value="Financial Education & Assistance">Financial Education & Assistance</option>
+                <option value="Community Organizing & Outreach">Community Organizing & Outreach</option>
+                <option value="Neighborhood Safety">Neighborhood Safety</option>
+                <option value="Tax Preparation">Tax Preparation</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Technology & IT">Technology & IT</option>
+                <option value="School Partnership & Coordination">School Partnership & Coordination</option>
+                <option value="Afterschool & Out-of-School Time Programming">Afterschool & Out-of-School Time Programming</option>
               </select>
             </div>
             <div class="filter-group">
@@ -1489,25 +1491,6 @@
         updatePills(nameQ, pillar, service, population, program);
       }
 
-      const SERVICE_LABELS = {
-        tutoring: 'Tutoring & Academic Support',
-        workforce: 'Workforce Development',
-        housing: 'Housing Development & Support',
-        legal: 'Legal Services',
-        health: 'Health & Wellness Services',
-        'mental health': 'Mental Health & Counseling',
-        food: 'Food Access',
-        'early childhood': 'Early Childhood Education',
-        'professional development': 'Educator Professional Development',
-        business: 'Business & Entrepreneurship Support',
-        financial: 'Financial Education & Assistance',
-        'community organizing': 'Community Organizing & Outreach',
-        safety: 'Neighborhood Safety',
-        tax: 'Tax Preparation',
-        transportation: 'Transportation',
-        technology: 'Technology & IT',
-      };
-
       function updatePills(name, pillar, service, pop, program) {
         const container = document.getElementById('active-pills');
         let html = '';
@@ -1516,7 +1499,7 @@
         if (pillar)
           html += `<span class="active-pill" onclick="clearField('filter-pillar')">${PILLAR_LABELS[pillar]} ×</span>`;
         if (service)
-          html += `<span class="active-pill" onclick="clearField('filter-service')">${SERVICE_LABELS[service]} ×</span>`;
+          html += `<span class="active-pill" onclick="clearField('filter-service')">${service} ×</span>`;
         if (pop)
           html += `<span class="active-pill" onclick="clearField('filter-population')">${pop} ×</span>`;
         if (program)

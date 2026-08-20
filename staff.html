@@ -126,6 +126,90 @@
         font-style: italic;
       }
 
+      /* ── MISSING-EMAIL MODAL ── */
+      /* A native alert() can't scroll, so a long missing-org list gets cut
+         off with a "…" — this modal replaces that for the bulk-reminder
+         missing-email warning. */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+
+      .modal-overlay.open {
+        display: flex;
+      }
+
+      .modal-card {
+        background: var(--white);
+        border-radius: 8px;
+        width: 100%;
+        max-width: 440px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      .modal-card h3 {
+        color: var(--green);
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .modal-card p {
+        margin-bottom: 0.75rem;
+        color: var(--text-main);
+      }
+
+      .modal-list {
+        overflow-y: auto;
+        flex: 1;
+        margin: 0 0 1.25rem;
+        padding-left: 1.25rem;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+      }
+
+      .modal-list li {
+        margin-bottom: 0.35rem;
+        color: var(--text-muted);
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+      }
+
+      .modal-actions button {
+        font-family: 'Onest', sans-serif;
+        font-weight: 600;
+        border-radius: 4px;
+        padding: 0.5rem 1.1rem;
+        cursor: pointer;
+        border: 1px solid var(--border);
+      }
+
+      .modal-btn-cancel {
+        background: var(--white);
+        color: var(--text-main);
+      }
+
+      .modal-btn-continue {
+        background: var(--green);
+        color: var(--white);
+        border-color: var(--green);
+      }
+
       /* ── HERO BAND ── */
       .hero {
         background: white;
@@ -979,7 +1063,7 @@
             </div>
           </div>
           <div class="header-left-label">
-            <span class="header-label">Internal Resource</span>
+            <span class="header-label">Internal Cherry Hill Team Page</span>
           </div>
         </div>
       </header>
@@ -1148,6 +1232,20 @@
       <strong>Cherry Hill Strong</strong> &nbsp;·&nbsp; Internal Partner Directory &nbsp;·&nbsp; For
       Internal Use Only
     </footer>
+
+    <!-- MISSING-EMAIL MODAL: shown before the bulk reminder send if any
+         partner has no contact email on file. -->
+    <div class="modal-overlay" id="missing-email-modal">
+      <div class="modal-card">
+        <h3>Some Partners Are Missing a Contact Email</h3>
+        <p id="missing-email-summary"></p>
+        <ul class="modal-list" id="missing-email-list"></ul>
+        <div class="modal-actions">
+          <button class="modal-btn-cancel" id="missing-email-cancel">Cancel</button>
+          <button class="modal-btn-continue" id="missing-email-continue">Continue</button>
+        </div>
+      </div>
+    </div>
 
     <script>
       const PILLAR_LABELS = {
@@ -1630,12 +1728,20 @@
 
       const DIRECTORY_URL = 'https://januaryadvisors.github.io/cherry-hill-strong-partner-directory/';
 
-      const BULK_REMINDER_SUBJECT = 'Please Help Us Keep the Cherry Hill Partner Directory Up-to-Date';
-      const BULK_REMINDER_BODY = `Hi there,
+      // ── EMAIL TEMPLATES, SHEET-DRIVEN ───────────────────────────────────
+      // Subject/body text for both reminder emails lives in the "Email
+      // Templates" tab of the spreadsheet (Field | Text columns) so the team
+      // can edit the wording without a code change. These DEFAULT_* values
+      // are the fallback used until that tab loads (or if it ever fails to
+      // load) — keep them in sync with what a blank/fresh tab should say.
+      // Use {{orgName}} and {{directoryUrl}} as placeholders in sheet text;
+      // fillTemplate() below substitutes them at send time.
+      const DEFAULT_BULK_REMINDER_SUBJECT = 'Please Help Us Keep the Cherry Hill Partner Directory Up-to-Date';
+      const DEFAULT_BULK_REMINDER_BODY = `Hi there,
 
 We are reaching out because you are listed in the Cherry Hill Strong partner directory, which serves as a centralized resource for Cherry Hill residents, staff, and community partners to find local organizations and the services they offer. We want to make sure that the information we have for your team is accurate.
 
-You can view your current listing here: ${DIRECTORY_URL}
+You can view your current listing here: {{directoryUrl}}
 
 If anything needs updating (contact info, services offered, populations served, etc.) just reply to this email with the changes and we'll take care of it on our end. If everything looks correct as-is, a quick reply confirming that helps too.
 
@@ -1643,18 +1749,84 @@ If you'd rather not be listed in the directory, just let us know and we'll remov
 
 Thanks for being part of the Cherry Hill network!`;
 
-      const INDIVIDUAL_REMINDER_SUBJECT = 'Reminder: Please Confirm Your Cherry Hill Partner Directory Listing';
+      const DEFAULT_INDIVIDUAL_REMINDER_SUBJECT = 'Reminder: Please Confirm Your Cherry Hill Partner Directory Listing';
+      const DEFAULT_INDIVIDUAL_REMINDER_BODY = `Hi {{orgName}} team,
 
-      function individualReminderBody(orgName) {
-        return `Hi ${orgName} team,
-
-Following up on our recent request to review your organization's listing in the Cherry Hill Strong partner directory. You can view your current listing here: ${DIRECTORY_URL}
+Following up on our recent request to review your organization's listing in the Cherry Hill Strong partner directory. You can view your current listing here: {{directoryUrl}}
 
 If you could reply with any updates or confirm if everything still looks accurate, we would appreciate it!
 
 And if you'd rather not be listed in the directory, just let us know.
 
 Thanks!`;
+
+      const EMAIL_TEMPLATES = {
+        bulkSubject: DEFAULT_BULK_REMINDER_SUBJECT,
+        bulkBody: DEFAULT_BULK_REMINDER_BODY,
+        individualSubject: DEFAULT_INDIVIDUAL_REMINDER_SUBJECT,
+        individualBody: DEFAULT_INDIVIDUAL_REMINDER_BODY,
+      };
+
+      function fillTemplate(template, vars) {
+        return Object.entries(vars).reduce(
+          (text, [key, value]) => text.split(`{{${key}}}`).join(value),
+          template
+        );
+      }
+
+      // Paste the "Email Templates" tab's gid here once it exists (Share >
+      // the tab's URL has "#gid=<number>" at the end) to switch this on.
+      const EMAIL_TEMPLATES_TAB_GID = '1497838934';
+      const EMAIL_TEMPLATES_CSV_URL =
+        EMAIL_TEMPLATES_TAB_GID === 'PASTE_GID_HERE'
+          ? null
+          : `https://docs.google.com/spreadsheets/d/1wUw7IPJSA6Rhe5Hv73F5N4LKSrC6e49DSSYcJMgDLc0/gviz/tq?tqx=out:csv&gid=${EMAIL_TEMPLATES_TAB_GID}`;
+
+      const EMAIL_TEMPLATE_FIELD_MAP = {
+        bulkremindersubject: 'bulkSubject',
+        bulkreminderbody: 'bulkBody',
+        individualremindersubject: 'individualSubject',
+        individualreminderbody: 'individualBody',
+      };
+
+      async function loadEmailTemplates() {
+        if (!EMAIL_TEMPLATES_CSV_URL) {
+          console.warn('Email Templates tab gid not configured yet — using built-in default email text.');
+          return;
+        }
+        try {
+          const res = await fetch(EMAIL_TEMPLATES_CSV_URL);
+          if (!res.ok) throw new Error('Network response was not ok: ' + res.status);
+          const csvText = await res.text();
+          const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+          const rows = parsed.data;
+
+          const headerRowIndex = rows.findIndex(row => row.some(cell => normalizeKey(cell) === 'field'));
+          if (headerRowIndex === -1) {
+            throw new Error('Could not find a "Field" column in the Email Templates tab');
+          }
+          const fieldColIdx = rows[headerRowIndex].findIndex(cell => normalizeKey(cell) === 'field');
+          const textColIdx = rows[headerRowIndex].findIndex(cell => normalizeKey(cell) === 'text');
+          if (textColIdx === -1) {
+            throw new Error('Could not find a "Text" column in the Email Templates tab');
+          }
+
+          let loadedAny = false;
+          rows.slice(headerRowIndex + 1).forEach(row => {
+            const key = EMAIL_TEMPLATE_FIELD_MAP[normalizeKey(row[fieldColIdx])];
+            const value = (row[textColIdx] || '').trim();
+            if (key && value) {
+              EMAIL_TEMPLATES[key] = value;
+              loadedAny = true;
+            }
+          });
+          if (!loadedAny) throw new Error('No recognized email template rows found');
+        } catch (err) {
+          console.warn(
+            'Failed to load email templates from the Email Templates tab — keeping the built-in defaults.',
+            err
+          );
+        }
       }
 
       function buildMailtoUrl({ to, bccList, subject, body }) {
@@ -1669,7 +1841,7 @@ Thanks!`;
       }
 
       function promptSenderName() {
-        const name = window.prompt('Your name (for the send log):', '');
+        const name = window.prompt('Please type your name for the Reminder Log', '');
         if (name === null) return null; // cancelled
         const trimmed = name.trim();
         return trimmed || null;
@@ -1677,7 +1849,7 @@ Thanks!`;
 
       function logSendEvent(sender, type, orgs) {
         if (!SEND_LOG_WEBHOOK_URL || SEND_LOG_WEBHOOK_URL.indexOf('PASTE_YOUR') === 0) {
-          console.warn('Send Log webhook URL not configured yet — skipping sheet log for this send.');
+          console.warn('Reminder Log webhook URL not configured yet — skipping sheet log for this send.');
           return;
         }
         // mode: 'no-cors' + text/plain avoids Apps Script's CORS/preflight quirks;
@@ -1699,8 +1871,11 @@ Thanks!`;
 
         const mailtoUrl = buildMailtoUrl({
           to: partner.contactEmail,
-          subject: INDIVIDUAL_REMINDER_SUBJECT,
-          body: individualReminderBody(partner.name),
+          subject: EMAIL_TEMPLATES.individualSubject,
+          body: fillTemplate(EMAIL_TEMPLATES.individualBody, {
+            orgName: partner.name,
+            directoryUrl: DIRECTORY_URL,
+          }),
         });
         window.open(mailtoUrl, '_blank');
 
@@ -1709,19 +1884,68 @@ Thanks!`;
         ]);
       }
 
-      function emailAllPartners() {
+      // A native alert() can't scroll, so a long missing-org list just gets
+      // cut off with a "…" — this modal shows the full list instead, with
+      // Cancel/Continue built in rather than a chain of confirm() dialogs.
+      function showMissingEmailModal(missingNames, sendToCount) {
+        return new Promise(resolve => {
+          const overlay = document.getElementById('missing-email-modal');
+          const summaryEl = document.getElementById('missing-email-summary');
+          const listEl = document.getElementById('missing-email-list');
+          const cancelBtn = document.getElementById('missing-email-cancel');
+          const continueBtn = document.getElementById('missing-email-continue');
+
+          summaryEl.textContent =
+            `${missingNames.length} partner org${missingNames.length === 1 ? '' : 's'} ` +
+            `${missingNames.length === 1 ? 'has' : 'have'} no contact email on file and won't get ` +
+            `this reminder. Send to the other ${sendToCount}?`;
+
+          listEl.innerHTML = '';
+          missingNames.forEach(name => {
+            const li = document.createElement('li');
+            li.textContent = name;
+            listEl.appendChild(li);
+          });
+
+          function cleanup(result) {
+            overlay.classList.remove('open');
+            cancelBtn.removeEventListener('click', onCancel);
+            continueBtn.removeEventListener('click', onContinue);
+            resolve(result);
+          }
+          function onCancel() {
+            cleanup(false);
+          }
+          function onContinue() {
+            cleanup(true);
+          }
+
+          cancelBtn.addEventListener('click', onCancel);
+          continueBtn.addEventListener('click', onContinue);
+          overlay.classList.add('open');
+        });
+      }
+
+      async function emailAllPartners() {
         const withEmail = PARTNERS.filter(p => p.contactEmail);
+        const missing = PARTNERS.filter(p => !p.contactEmail);
+
         if (!withEmail.length) {
           alert('No partner contact emails are on file yet.');
           return;
         }
 
-        const confirmed = confirm(
-          `This will open an email BCC'd to ${withEmail.length} partner contact${
-            withEmail.length === 1 ? '' : 's'
-          }. Continue?`
-        );
-        if (!confirmed) return;
+        if (missing.length) {
+          const proceed = await showMissingEmailModal(missing.map(p => p.name), withEmail.length);
+          if (!proceed) return;
+        } else {
+          const confirmed = confirm(
+            `This will open an email BCC'd to ${withEmail.length} partner contact${
+              withEmail.length === 1 ? '' : 's'
+            }. Continue?`
+          );
+          if (!confirmed) return;
+        }
 
         const sender = promptSenderName();
         if (!sender) return;
@@ -1729,8 +1953,8 @@ Thanks!`;
         const bccList = withEmail.map(p => p.contactEmail);
         const mailtoUrl = buildMailtoUrl({
           bccList,
-          subject: BULK_REMINDER_SUBJECT,
-          body: BULK_REMINDER_BODY,
+          subject: EMAIL_TEMPLATES.bulkSubject,
+          body: fillTemplate(EMAIL_TEMPLATES.bulkBody, { directoryUrl: DIRECTORY_URL }),
         });
         window.open(mailtoUrl, '_blank');
 
@@ -1794,6 +2018,7 @@ Thanks!`;
       // Init
       loadPartnersFromSheet();
       loadPopulationFilterOptions();
+      loadEmailTemplates();
     </script>
   </body>
 </html>

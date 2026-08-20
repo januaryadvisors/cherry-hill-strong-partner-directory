@@ -1,7 +1,7 @@
 // Reminder Log webhook for the Cherry Hill Strong Partner Directory.
 //
 // Deploy this bound to the SAME spreadsheet the directory reads from
-// (the one behind SHEET_CSV_URL in index.html).
+// (the one behind SHEET_CSV_URL in staff.html).
 //
 // Setup:
 //   1. Open the spreadsheet.
@@ -11,7 +11,7 @@
 //      - Execute as: Me
 //      - Who has access: Anyone
 //   5. Copy the Web app URL it gives you.
-//   6. Paste that URL into SEND_LOG_WEBHOOK_URL in index.html.
+//   6. Paste that URL into SEND_LOG_WEBHOOK_URL in staff.html.
 //
 // Each send from the directory appends one row per organization to a
 // "Reminder Log" tab (created automatically on first send if it doesn't exist).
